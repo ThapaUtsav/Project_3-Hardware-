@@ -1,0 +1,214 @@
+#include <reg51.h>
+#include <string.h>
+
+//*----------LED--------*
+sbit led = P1^0;
+
+
+//*--------SWITCH_Tank----------*
+sbit switch1 = P1^1;
+sbit switch2 = P1^2;
+sbit switch3 = P1^3;
+sbit switch4 = P1^4;
+sbit switch5 = P1^5;
+
+//*--------SWITCH_Reserve----------*
+sbit switch6 = P3^3;
+sbit switch7 = P3^4;
+sbit switch8 = P3^5;
+sbit switch9 = P3^6;
+sbit switch10 = P3^7;
+
+//*---------LCD--------*
+#define LCD_data P2
+//*---------Manual-----------*
+sbit man=P1^6;
+
+
+sbit RS = P0^0;
+sbit RW = P0^1;
+sbit EN = P0^2;
+
+void switch_check_reserve();
+
+void delay(unsigned int t) {
+    unsigned int i, j;
+    for (i = 0; i < t; i++) {
+        for (j = 0; j < 1275; j++);
+    }
+}
+
+void LCD_cmd(unsigned char cmd) {
+    LCD_data = cmd;
+    RS = 0;
+    RW = 0;
+    EN = 1;
+    delay(10);
+    EN = 0;
+}
+
+void LCD_init() {
+    LCD_cmd(0x38);
+    delay(10);
+    LCD_cmd(0x0e);
+    delay(10);
+    LCD_cmd(0x01);
+    delay(10);
+}
+
+void LCD_data_write(unsigned char data_) {
+    LCD_data = data_;
+    RS = 1;
+    RW = 0;
+    EN = 1;
+    delay(10);
+    EN = 0;
+}
+
+void LCD_string_write(unsigned char *string) {
+    int i = 0;
+    while (string[i] != '\0') {
+        LCD_data_write(string[i]);
+        i++;
+    }
+}
+
+//*-----------Switch---------------*
+void switch_check_tank() {
+    LCD_init();
+    if (switch1 == 0&&led==0) {
+						LCD_cmd(0x01);
+						LCD_string_write("T::FULL");
+						delay(50);
+            switch_check_reserve();
+					
+    } 
+		else if (switch2 == 0 && switch1 == 1&&led==0) {
+						LCD_cmd(0x01);
+            LCD_string_write("T::Third Quarter");
+            delay(50);
+            switch_check_reserve();
+        
+    }
+		else if (switch3==0&&switch2 == 1 && switch1 == 1&&led==0) {
+						LCD_cmd(0x01);
+            LCD_string_write("T::Half");
+            delay(50);
+            switch_check_reserve();
+        
+    } 
+		else if (switch4 == 0 && switch3 == 1 && switch2 == 1 && switch1 == 1&&led==0) {
+        LCD_cmd(0x01);
+            LCD_string_write("T::Quarter");
+            delay(50);
+            switch_check_reserve();
+        
+    } 
+		else if (switch5 == 0 && switch4 == 1 && switch3 == 1 && switch2 == 1 && switch1 == 1&&led==0) {
+        LCD_cmd(0x01);
+            LCD_string_write("T::Empty");
+            delay(50);
+            switch_check_reserve();
+        
+			}
+				else if(led!=1){
+					LCD_string_write("T:Emergency");
+					delay(50);
+					switch_check_reserve();
+				
+    }
+		LCD_cmd(0x01);
+}
+	//*-----------------Reserve--------------*	
+void switch_check_reserve() {
+    if (switch6 == 0&&led==0) {
+        LCD_cmd(0xC0);
+        LCD_string_write("R:FULL");
+        delay(50);
+    } else if (switch7 == 0 && switch6 == 1&&led==0) {
+        LCD_cmd(0xC0);
+        LCD_string_write("R:Third Quarter");
+        delay(50);
+    } else if (switch8 == 0 && switch6 == 1 && switch7 == 1&&led==0) {
+        LCD_cmd(0xC0);
+        LCD_string_write("R:Half");
+        delay(50);
+    } else if (switch9 == 0 && switch6 == 1 && switch7 == 1 && switch8 == 1&&led==0) {
+        LCD_cmd(0xC0);
+        LCD_string_write("R::Quarter");
+        delay(50);
+    } else if (switch10 == 0 && switch6 == 1 && switch7 == 1 && switch8 == 1 && switch9 == 1&&led==0) {
+        LCD_cmd(0xC0);
+        LCD_string_write("R:Empty");
+        delay(50);
+    } else if(led!=1){
+        LCD_cmd(0xC0);
+        LCD_string_write("R:Emergency");
+        delay(50);
+    }
+}
+//*----------LCD fill----------------*
+void Check_Fill(){
+    if(led==1||man==0){
+        do
+        {
+            LCD_cmd(0x01);
+            LCD_string_write("Filling");
+						delay(50);
+					} while(switch1==1&&switch10==0&&man==0);
+    }
+		else{
+		switch_check_tank();
+		}
+}
+
+
+//*----------LED (MOTOR)----------------*
+void Check(){
+
+	if(switch3==1&&switch4==0&&switch5==0&&switch9==0){
+		do{
+		led=1;
+			Check_Fill();
+		}while(switch1!=0&&switch9==0);
+	}
+	else if(switch4==1&&switch9==1&&switch10==0){
+			do{
+		led=1;
+		Check_Fill();
+		}while(switch10==0);
+	}
+/*	else if(switch6==0&&switch7==0){
+		do{
+				led=1;
+			Check_Fill();
+		}while(switch6!=1);
+	}*/	
+	else{
+		led=0;
+	}		
+}
+
+//*----------Manual switch----------------*
+void manual()
+{
+	led =0;
+	if(man==0&&switch1==1&&switch10==0)
+	{
+		do{
+			led=1;
+		}while(man==0&&switch1!=1&&switch10!=0);
+		Check_Fill();
+	}
+	else if(man==1){
+		led=0;
+	}
+}
+
+void main() {
+    while (1) {
+				manual();
+        switch_check_tank();
+				Check();
+    }
+}
